@@ -91,7 +91,21 @@ SCE2AnnData <- function(sce, X_name = NULL, assays = TRUE, colData = TRUE,
             names(assays_list) <- assay_names
         }
         adata_list$layers <- assays_list
+        layer_idents <- c(rep("assay", length(assays_list))) # Generates layer identifier vector to recognize the first layers as assays
+      
+        # Converting altExps' initial assay to unique layers
+        altexp_names <- altExpNames(sce)
+        altexp_list <- lapply(altExps(sce), function(altExp) { # Grab only initial assay of each altExp
+          .makeNumpyFriendly( assay(altExp) )
+        }) 
+        names(altexp_list) <- altexp_names
+        adata_list$layers <- c(adata_list$layers, altexp_list) # Append new layers
+        layer_idents <- c(layer_idents, rep("altExp", length(altexp_list))) # Add layer identifiers
+
         cli::cli_progress_done()
+      
+        
+                         
     }
 
     if (isFALSE(colData)) {
@@ -188,6 +202,8 @@ SCE2AnnData <- function(sce, X_name = NULL, assays = TRUE, colData = TRUE,
 
     uns_list <- list()
     uns_list[["X_name"]] <- X_name
+    uns_list[["layer_ident"]] <- layer_idents # Distinguish between a layer storing an assay vs. an altExp
+  
     if (isFALSE(metadata)) {
         .ui_info("Skipping conversion of {.field metadata}")
     } else if (length(metadata(sce)) == 0) {
